@@ -21,7 +21,7 @@ Flask-DebugToolbar==0.13.1
 python-json-logger==2.0.7
 
 # Security
-cryptography==41.0.8
+cryptography==44.0.3
 
 # Testing (optional - for development)
 pytest==7.4.3
