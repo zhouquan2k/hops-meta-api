@@ -1,0 +1,28 @@
+# Core web framework
+Flask==3.0.0
+Werkzeug==3.0.1
+
+# Database connectivity
+PyMySQL==1.1.0
+
+# CORS support
+Flask-CORS==4.0.0
+
+# Production WSGI server
+gunicorn==21.2.0
+
+# Environment management
+python-dotenv==1.0.0
+
+# Development and debugging
+Flask-DebugToolbar==0.13.1
+
+# Logging and monitoring
+python-json-logger==2.0.7
+
+# Security
+cryptography==41.0.8
+
+# Testing (optional - for development)
+pytest==7.4.3
+pytest-flask==1.3.0 
