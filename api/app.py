@@ -10,13 +10,8 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 import traceback
 
-try:
-    from .database import test_connection
-    from .models import get_table_columns_info, search_tables
-except ImportError:
-    # 如果相对导入失败，尝试绝对导入
-    from database import test_connection
-    from models import get_table_columns_info, search_tables
+from database import test_connection
+from models import get_table_columns_info, search_tables
 
 
 def create_app():

@@ -7,7 +7,7 @@
 """
 
 import pymysql
-from .database import get_db_connection
+from database import get_db_connection
 
 
 def get_table_columns_info(table_name, owner=None):
