@@ -1,5 +1,6 @@
 启动 
-python api/run.py
+cd api
+python run.py
 
 
 # Oracle表结构查询API - 快速启动
