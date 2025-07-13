@@ -1,0 +1,51 @@
+{
+  "name": "Oracle 11g Python开发环境 (x86_64)",
+  "dockerComposeFile": "docker-compose.yml",
+  "service": "python-dev",
+  "workspaceFolder": "/app",
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "python.defaultInterpreterPath": "/usr/local/bin/python",
+        "python.linting.enabled": true,
+        "python.linting.flake8Enabled": true,
+        "python.formatting.provider": "black",
+        "python.formatting.blackPath": "/usr/local/bin/black",
+        "editor.formatOnSave": true,
+        "editor.rulers": [
+          88
+        ],
+        "python.linting.mypyEnabled": true
+      },
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "ms-toolsai.jupyter",
+        "ms-azuretools.vscode-docker",
+        "njpwerner.autodocstring",
+        "matangover.mypy"
+      ]
+    }
+  },
+  "remoteUser": "vscode",
+  "postCreateCommand": "sudo /usr/local/bin/check_oracle.sh",
+  "forwardPorts": [
+    8888
+  ],
+  "features": {
+    "ghcr.io/devcontainers/features/common-utils:2": {
+      "installZsh": "true",
+      "username": "vscode",
+      "userUid": "1000",
+      "userGid": "1000"
+    }
+  },
+  "portsAttributes": {
+    "5000": {
+      "label": "5050"
+    },
+    "5050": {
+      "label": "5000"
+    }
+  }
+}

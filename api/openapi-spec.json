@@ -1,0 +1,512 @@
+{
+    "openapi": "3.0.3",
+    "info": {
+        "title": "HIS表结构查询API",
+        "description": "提供查询HIS表列信息的RESTful API接口，支持表结构查询、列信息获取、表搜索等功能",
+        "version": "1.0.0",
+        "contact": {
+            "name": "API支持",
+            "email": "support@example.com"
+        }
+    },
+    "servers": [
+        {
+            "url": "http://localhost:5000"
+        }
+    ],
+    "paths": {
+        "/api/tables/{table_name}/columns": {
+            "get": {
+                "summary": "获取表列信息",
+                "description": "根据表名获取指定表的详细列信息，包括列类型、约束、索引等",
+                "operationId": "getTableColumns",
+                "tags": [
+                    "表结构查询"
+                ],
+                "parameters": [
+                    {
+                        "name": "table_name",
+                        "in": "path",
+                        "required": true,
+                        "description": "表名",
+                        "schema": {
+                            "type": "string",
+                            "minLength": 1,
+                            "example": "USER_INFO"
+                        }
+                    },
+                    {
+                        "name": "owner",
+                        "in": "query",
+                        "required": false,
+                        "description": "表所有者（可选，用于精确匹配）",
+                        "schema": {
+                            "type": "string",
+                            "example": "SCOTT"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "成功获取表列信息",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TableColumnsResponse"
+                                },
+                                "example": {
+                                    "success": true,
+                                    "data": {
+                                        "table_info": {
+                                            "owner": "SCOTT",
+                                            "table_name": "USER_INFO",
+                                            "comment": "用户信息表",
+                                            "rows_count": 1000,
+                                            "last_analyzed": "2024-01-15T10:30:00"
+                                        },
+                                        "columns": [
+                                            {
+                                                "column_name": "USER_ID",
+                                                "data_type": "NUMBER",
+                                                "nullable": "N",
+                                                "default_value": null,
+                                                "comment": "用户ID",
+                                                "column_id": 1,
+                                                "is_primary_key": true
+                                            },
+                                            {
+                                                "column_name": "USER_NAME",
+                                                "data_type": "VARCHAR2",
+                                                "nullable": "N",
+                                                "default_value": null,
+                                                "comment": "用户名",
+                                                "column_id": 2,
+                                                "is_primary_key": false
+                                            }
+                                        ],
+                                        "primary_keys": [
+                                            "USER_ID"
+                                        ],
+                                        "foreign_keys": [
+                                            {
+                                                "constraint_name": "FK_USER_DEPT",
+                                                "column_name": "DEPT_ID",
+                                                "referenced_table": "DEPARTMENT",
+                                                "referenced_column": "DEPT_ID"
+                                            }
+                                        ],
+                                        "indices": [
+                                            {
+                                                "index_name": "IDX_USER_NAME",
+                                                "index_type": "NORMAL",
+                                                "uniqueness": "NONUNIQUE",
+                                                "column_name": "USER_NAME",
+                                                "status": "VALID"
+                                            }
+                                        ]
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                },
+                                "example": {
+                                    "success": false,
+                                    "error": "表名不能为空"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "表不存在",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                },
+                                "example": {
+                                    "success": false,
+                                    "error": "未找到表 USER_INFO",
+                                    "message": "请检查表名是否正确，或指定正确的owner参数"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "服务器内部错误",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/tables/search": {
+            "get": {
+                "summary": "搜索表",
+                "description": "根据关键词搜索表名和注释，支持模糊匹配",
+                "operationId": "searchTables",
+                "tags": [
+                    "表结构查询"
+                ],
+                "parameters": [
+                    {
+                        "name": "keyword",
+                        "in": "query",
+                        "required": false,
+                        "description": "搜索关键词（匹配表名或注释）",
+                        "schema": {
+                            "type": "string",
+                            "example": "USER"
+                        }
+                    },
+                    {
+                        "name": "owner",
+                        "in": "query",
+                        "required": false,
+                        "description": "表所有者（可选，用于过滤结果）",
+                        "schema": {
+                            "type": "string",
+                            "example": "SCOTT"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "成功搜索到匹配的表",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SearchTablesResponse"
+                                },
+                                "example": {
+                                    "success": true,
+                                    "data": {
+                                        "tables": [
+                                            {
+                                                "owner": "SCOTT",
+                                                "table_name": "USER_INFO",
+                                                "comment": "用户信息表",
+                                                "rows_count": 1000
+                                            },
+                                            {
+                                                "owner": "SCOTT",
+                                                "table_name": "USER_LOG",
+                                                "comment": "用户日志表",
+                                                "rows_count": 5000
+                                            }
+                                        ],
+                                        "count": 2
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "服务器内部错误",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "TableInfo": {
+                "type": "object",
+                "properties": {
+                    "owner": {
+                        "type": "string",
+                        "description": "表所有者"
+                    },
+                    "table_name": {
+                        "type": "string",
+                        "description": "表名"
+                    },
+                    "comment": {
+                        "type": "string",
+                        "description": "表注释"
+                    },
+                    "rows_count": {
+                        "type": "integer",
+                        "description": "行数"
+                    },
+                    "last_analyzed": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "最后分析时间"
+                    }
+                },
+                "required": [
+                    "owner",
+                    "table_name"
+                ]
+            },
+            "ColumnInfo": {
+                "type": "object",
+                "properties": {
+                    "column_name": {
+                        "type": "string",
+                        "description": "列名"
+                    },
+                    "data_type": {
+                        "type": "string",
+                        "description": "数据类型"
+                    },
+                    "nullable": {
+                        "type": "string",
+                        "description": "是否可为空（Y/N）"
+                    },
+                    "default_value": {
+                        "type": "string",
+                        "description": "默认值"
+                    },
+                    "comment": {
+                        "type": "string",
+                        "description": "列注释"
+                    },
+                    "column_id": {
+                        "type": "integer",
+                        "description": "列ID"
+                    },
+                    "is_primary_key": {
+                        "type": "boolean",
+                        "description": "是否为主键"
+                    }
+                },
+                "required": [
+                    "column_name",
+                    "data_type",
+                    "nullable",
+                    "column_id",
+                    "is_primary_key"
+                ]
+            },
+            "ForeignKeyInfo": {
+                "type": "object",
+                "properties": {
+                    "constraint_name": {
+                        "type": "string",
+                        "description": "约束名称"
+                    },
+                    "column_name": {
+                        "type": "string",
+                        "description": "列名"
+                    },
+                    "referenced_table": {
+                        "type": "string",
+                        "description": "引用表名"
+                    },
+                    "referenced_column": {
+                        "type": "string",
+                        "description": "引用列名"
+                    }
+                },
+                "required": [
+                    "constraint_name",
+                    "column_name",
+                    "referenced_table",
+                    "referenced_column"
+                ]
+            },
+            "IndexInfo": {
+                "type": "object",
+                "properties": {
+                    "index_name": {
+                        "type": "string",
+                        "description": "索引名称"
+                    },
+                    "index_type": {
+                        "type": "string",
+                        "description": "索引类型"
+                    },
+                    "uniqueness": {
+                        "type": "string",
+                        "description": "唯一性（UNIQUE/NONUNIQUE）"
+                    },
+                    "column_name": {
+                        "type": "string",
+                        "description": "列名"
+                    },
+                    "status": {
+                        "type": "string",
+                        "description": "索引状态"
+                    }
+                },
+                "required": [
+                    "index_name",
+                    "index_type",
+                    "uniqueness",
+                    "column_name",
+                    "status"
+                ]
+            },
+            "TableColumnsData": {
+                "type": "object",
+                "properties": {
+                    "table_info": {
+                        "$ref": "#/components/schemas/TableInfo"
+                    },
+                    "columns": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ColumnInfo"
+                        },
+                        "description": "列信息列表"
+                    },
+                    "primary_keys": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "主键列名列表"
+                    },
+                    "foreign_keys": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ForeignKeyInfo"
+                        },
+                        "description": "外键信息列表"
+                    },
+                    "indices": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/IndexInfo"
+                        },
+                        "description": "索引信息列表"
+                    }
+                },
+                "required": [
+                    "table_info",
+                    "columns",
+                    "primary_keys",
+                    "foreign_keys",
+                    "indices"
+                ]
+            },
+            "TableColumnsResponse": {
+                "type": "object",
+                "properties": {
+                    "success": {
+                        "type": "boolean",
+                        "description": "操作是否成功"
+                    },
+                    "data": {
+                        "$ref": "#/components/schemas/TableColumnsData"
+                    }
+                },
+                "required": [
+                    "success",
+                    "data"
+                ]
+            },
+            "SearchTableInfo": {
+                "type": "object",
+                "properties": {
+                    "owner": {
+                        "type": "string",
+                        "description": "表所有者"
+                    },
+                    "table_name": {
+                        "type": "string",
+                        "description": "表名"
+                    },
+                    "comment": {
+                        "type": "string",
+                        "description": "表注释"
+                    },
+                    "rows_count": {
+                        "type": "integer",
+                        "description": "行数"
+                    }
+                },
+                "required": [
+                    "owner",
+                    "table_name"
+                ]
+            },
+            "SearchTablesData": {
+                "type": "object",
+                "properties": {
+                    "tables": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/SearchTableInfo"
+                        },
+                        "description": "表列表"
+                    },
+                    "count": {
+                        "type": "integer",
+                        "description": "表数量"
+                    }
+                },
+                "required": [
+                    "tables",
+                    "count"
+                ]
+            },
+            "SearchTablesResponse": {
+                "type": "object",
+                "properties": {
+                    "success": {
+                        "type": "boolean",
+                        "description": "操作是否成功"
+                    },
+                    "data": {
+                        "$ref": "#/components/schemas/SearchTablesData"
+                    }
+                },
+                "required": [
+                    "success",
+                    "data"
+                ]
+            },
+            "ErrorResponse": {
+                "type": "object",
+                "properties": {
+                    "success": {
+                        "type": "boolean",
+                        "description": "操作是否成功"
+                    },
+                    "error": {
+                        "type": "string",
+                        "description": "错误信息"
+                    },
+                    "message": {
+                        "type": "string",
+                        "description": "详细错误消息"
+                    }
+                },
+                "required": [
+                    "success"
+                ]
+            }
+        }
+    },
+    "tags": [
+        {
+            "name": "系统管理",
+            "description": "系统相关的API接口"
+        },
+        {
+            "name": "表结构查询",
+            "description": "Oracle表结构查询相关的API接口"
+        }
+    ]
+}

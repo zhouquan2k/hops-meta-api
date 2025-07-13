@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  python-dev:
+    build:
+      context: ..
+      dockerfile: .devcontainer/Dockerfile
+    platform: linux/amd64
+    volumes:
+      - ..:/app
+      - ~/.gitconfig:/root/.gitconfig
+    ports:
+      - "8888:8888" # 用于Jupyter笔记本
+    environment:
+      - PYTHONPATH=/app
+      - LD_LIBRARY_PATH=/opt/oracle/instantclient_19_3:${LD_LIBRARY_PATH:-}
+      - ORACLE_HOME=/opt/oracle/instantclient_19_3
+      - NLS_LANG=AMERICAN_AMERICA.AL32UTF8
+    # VS Code 所需的设置
+    command: sleep infinity
+    user: vscode
+    # 使终端可以使用
+    tty: true
+    stdin_open: true
