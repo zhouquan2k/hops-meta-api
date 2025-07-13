@@ -32,6 +32,9 @@ COPY docker-entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 ENTRYPOINT ["docker-entrypoint.sh"]
 
+# 切换到api目录作为工作目录
+WORKDIR /app/api
+
 # 暴露端口
 EXPOSE 5000
 

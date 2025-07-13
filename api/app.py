@@ -187,8 +187,10 @@ def register_error_handlers(app):
         return response, 500
 
 
+# 创建应用实例供gunicorn使用
+app = create_app()
+
 # 为了向后兼容，保留直接运行的方式
 if __name__ == '__main__':
     print("启动Oracle表结构查询API服务...")
-    app = create_app()
     app.run(host='0.0.0.0', port=5050, debug=True) 
