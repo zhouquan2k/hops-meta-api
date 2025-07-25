@@ -10,6 +10,24 @@ import pymysql
 from database import get_db_connection
 
 
+def filter_none_values(data):
+    """
+    递归过滤字典和列表中的None值
+    
+    Args:
+        data: 要过滤的数据（字典、列表或基本类型）
+    
+    Returns:
+        过滤后的数据，None值被移除
+    """
+    if isinstance(data, dict):
+        return {k: filter_none_values(v) for k, v in data.items() if v is not None}
+    elif isinstance(data, list):
+        return [filter_none_values(item) for item in data if item is not None]
+    else:
+        return data
+
+
 def get_table_columns_info(table_name, owner=None):
     """
     获取指定表的列信息
@@ -34,7 +52,7 @@ def get_table_columns_info(table_name, owner=None):
                 
                 # 查询表基本信息
                 table_query = f"""
-                SELECT t.id, t.owner, t.table_name, t.comment, t.rows_count, t.last_analyzed
+                SELECT t.id, t.owner, t.table_name, t.comment, t.rows_count, t.last_analyzed, t.id_column, t.name_column, t.code_column
                 FROM oracle_tables t
                 WHERE {table_where}
                 ORDER BY t.owner, t.table_name
@@ -52,10 +70,15 @@ def get_table_columns_info(table_name, owner=None):
                 
                 # 查询列信息
                 columns_query = """
-                SELECT column_name, data_type, nullable, default_value, comment, column_id, column_type, column_info
-                FROM oracle_columns
-                WHERE table_id = %s
-                ORDER BY column_id
+                SELECT c.column_name, c.data_type, c.nullable, c.default_value, c.comment, 
+                       c.column_id, c.column_type, c.column_info,
+                       ref_table.id_column as ref_id_column,
+                       ref_table.name_column as ref_name_column,
+                       ref_table.code_column as ref_code_column
+                FROM oracle_columns c
+                LEFT JOIN oracle_tables ref_table ON (c.column_type = 'FK' AND c.column_info = ref_table.table_name)
+                WHERE c.table_id = %s
+                ORDER BY c.column_id
                 """
                 
                 cursor.execute(columns_query, [table_id])
@@ -91,9 +114,7 @@ def get_table_columns_info(table_name, owner=None):
                 cursor.execute(idx_query, [table_id])
                 indices = cursor.fetchall()
                 
-                # 为每个列添加主键标记
-                for column in columns:
-                    column['is_primary_key'] = column['column_name'] in primary_keys
+
                 
                 # 构建返回结果
                 result = {
@@ -102,7 +123,10 @@ def get_table_columns_info(table_name, owner=None):
                         'table_name': table_info['table_name'],
                         'comment': table_info['comment'] or '',
                         'rows_count': table_info['rows_count'],
-                        'last_analyzed': table_info['last_analyzed'].isoformat() if table_info['last_analyzed'] else None
+                        'last_analyzed': table_info['last_analyzed'].isoformat() if table_info['last_analyzed'] else None,
+                        'id_column': table_info['id_column'],
+                        'name_column': table_info['name_column'],
+                        'code_column': table_info['code_column']
                     },
                     'columns': columns,
                     'primary_keys': primary_keys,
@@ -110,7 +134,8 @@ def get_table_columns_info(table_name, owner=None):
                     'indices': indices
                 }
                 
-                return result
+                # 过滤None值以节省带宽
+                return filter_none_values(result)
                 
     except Exception as e:
         print(f"查询表列信息错误: {e}")
@@ -149,7 +174,7 @@ def search_tables(keyword=None, owner=None):
                     where_clause = "WHERE " + " AND ".join(where_conditions)
                 
                 query = f"""
-                SELECT owner, table_name, comment, rows_count
+                SELECT owner, table_name, comment, rows_count, id_column, name_column, code_column
                 FROM oracle_tables
                 {where_clause}
                 ORDER BY owner, table_name
@@ -157,7 +182,10 @@ def search_tables(keyword=None, owner=None):
                 """
                 
                 cursor.execute(query, params)
-                return cursor.fetchall()
+                tables = cursor.fetchall()
+                
+                # 过滤None值以节省带宽
+                return [filter_none_values(table) for table in tables]
                 
     except Exception as e:
         print(f"搜索表错误: {e}")
@@ -177,7 +205,8 @@ def update_table_info(table_name, owner=None, table_data=None):
         dict: 更新结果
     """
     if not table_data:
-        return {'success': False, 'error': '没有提供要更新的数据'}
+        result = {'success': False, 'error': '没有提供要更新的数据'}
+        return filter_none_values(result)
     
     try:
         with get_db_connection() as conn:
@@ -201,10 +230,11 @@ def update_table_info(table_name, owner=None, table_data=None):
                 table_record = cursor.fetchone()
                 
                 if not table_record:
-                    return {
+                    result = {
                         'success': False, 
                         'error': f'未找到表 {owner + "." + table_name if owner else table_name}'
                     }
+                    return filter_none_values(result)
                 
                 # 构建更新语句
                 update_fields = []
@@ -215,7 +245,8 @@ def update_table_info(table_name, owner=None, table_data=None):
                     update_params.append(table_data['comment'])
                 
                 if not update_fields:
-                    return {'success': False, 'error': '没有提供有效的更新字段'}
+                    result = {'success': False, 'error': '没有提供有效的更新字段'}
+                    return filter_none_values(result)
                 
                 # 执行更新
                 update_query = f"""
@@ -229,13 +260,15 @@ def update_table_info(table_name, owner=None, table_data=None):
                 conn.commit()
                 
                 if cursor.rowcount > 0:
-                    return {
+                    result = {
                         'success': True,
                         'message': f'成功更新表 {table_record["owner"]}.{table_record["table_name"]}',
                         'updated_fields': list(table_data.keys())
                     }
+                    return filter_none_values(result)
                 else:
-                    return {'success': False, 'error': '更新失败，没有行被修改'}
+                    result = {'success': False, 'error': '更新失败，没有行被修改'}
+                    return filter_none_values(result)
                 
     except Exception as e:
         print(f"更新表信息错误: {e}")
@@ -255,7 +288,8 @@ def update_table_columns(table_name, owner=None, columns_data=None):
         dict: 更新结果
     """
     if not columns_data or not isinstance(columns_data, list):
-        return {'success': False, 'error': '没有提供有效的列更新数据'}
+        result = {'success': False, 'error': '没有提供有效的列更新数据'}
+        return filter_none_values(result)
     
     try:
         with get_db_connection() as conn:
@@ -279,10 +313,11 @@ def update_table_columns(table_name, owner=None, columns_data=None):
                 table_record = cursor.fetchone()
                 
                 if not table_record:
-                    return {
+                    result = {
                         'success': False, 
                         'error': f'未找到表 {owner + "." + table_name if owner else table_name}'
                     }
+                    return filter_none_values(result)
                 
                 table_id = table_record['id']
                 updated_columns = []
@@ -373,7 +408,7 @@ def update_table_columns(table_name, owner=None, columns_data=None):
                     # 提交事务
                     conn.commit()
                     
-                    return {
+                    result = {
                         'success': True,
                         'message': f'批量更新表 {table_record["owner"]}.{table_record["table_name"]} 的列信息完成',
                         'updated_columns': updated_columns,
@@ -384,6 +419,7 @@ def update_table_columns(table_name, owner=None, columns_data=None):
                             'failed': len(failed_columns)
                         }
                     }
+                    return filter_none_values(result)
                     
                 except Exception as e:
                     # 回滚事务
@@ -425,12 +461,15 @@ def get_id_mapping_by_name(id_name):
                 if not mappings:
                     return None
                 
+                # 过滤None值以节省带宽
+                filtered_mappings = [filter_none_values(mapping) for mapping in mappings]
+                
                 # 如果只有一个匹配，返回单个字典
-                if len(mappings) == 1:
-                    return mappings[0]
+                if len(filtered_mappings) == 1:
+                    return filtered_mappings[0]
                 
                 # 如果有多个匹配，返回列表
-                return mappings
+                return filtered_mappings
                 
     except Exception as e:
         print(f"查询ID映射时出错: {e}")
