@@ -11,6 +11,7 @@ services:
       - ~/.gitconfig:/root/.gitconfig
     ports:
       - "8888:8888" # 用于Jupyter笔记本
+      - "0.0.0.0:5050:5050" # 应用服务器 - 绑定到所有接口
     environment:
       - PYTHONPATH=/app
       - LD_LIBRARY_PATH=/opt/oracle/instantclient_19_3:${LD_LIBRARY_PATH:-}

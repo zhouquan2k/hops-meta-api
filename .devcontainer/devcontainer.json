@@ -30,7 +30,8 @@
   "remoteUser": "vscode",
   "postCreateCommand": "sudo /usr/local/bin/check_oracle.sh",
   "forwardPorts": [
-    8888
+    8888,
+    5050
   ],
   "features": {
     "ghcr.io/devcontainers/features/common-utils:2": {
@@ -41,11 +42,9 @@
     }
   },
   "portsAttributes": {
-    "5000": {
-      "label": "5050"
-    },
     "5050": {
-      "label": "5000"
+      "label": "Application Server",
+      "visibility": "public"
     }
   }
 }

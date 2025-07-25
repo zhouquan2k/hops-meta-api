@@ -1,14 +1,14 @@
 openapi: 3.0.3
 info:
-  title: HIS表结构查询API
-  description: 提供查询HIS表列信息的RESTful API接口
-  version: 1.0.0
+  title: HIS表结构查询和更新API
+  description: 提供查询和更新HIS表列信息的RESTful API接口
+  version: 1.1.0
   contact:
     name: API支持
     email: support@example.com
 
 servers:
-  - url: http://localhost:5000
+  - url: http://192.168.1.89:5050
 
 paths:
   /api/tables/{table_name}/columns:
@@ -21,18 +21,11 @@ paths:
         - name: table_name
           in: path
           required: true
-          description: 表名
+          description: 表名，支持OWNER.TABLE_NAME格式
           schema:
             type: string
             minLength: 1
-            example: USER_INFO
-        - name: owner
-          in: query
-          required: false
-          description: 表所有者（可选）
-          schema:
-            type: string
-            example: SCOTT
+            example: IIH.USER_INFO
       responses:
         '200':
           description: 成功获取表列信息
@@ -93,8 +86,125 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
               example:
                 success: false
-                error: 未找到表 USER_INFO
-                message: 请检查表名是否正确，或指定正确的owner参数
+                error: 未找到表 IIH.USER_INFO
+                message: 请检查表名是否正确，支持格式：TABLE_NAME 或 OWNER.TABLE_NAME
+                '500':
+          description: 服务器内部错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    put:
+      summary: 批量更新表列信息
+      description: 批量更新表的多个列信息（如注释、是否可空等）
+      operationId: updateTableColumns
+      tags: [表结构更新]
+      parameters:
+        - name: table_name
+          in: path
+          required: true
+          description: 表名，支持OWNER.TABLE_NAME格式
+          schema:
+            type: string
+            minLength: 1
+            example: IIH.USER_INFO
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateColumnsRequest'
+            example:
+              columns:
+                - column_name: USER_ID
+                  comment: 用户唯一标识（已更新）
+                - column_name: USER_NAME
+                  comment: 用户名称（已更新）
+                  nullable: Y
+      responses:
+        '200':
+          description: 成功批量更新列信息
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UpdateColumnsResponse'
+              example:
+                success: true
+                data:
+                  success: true
+                  message: 批量更新表 IIH.USER_INFO 的列信息完成
+                  updated_columns:
+                    - column: USER_ID
+                      updated_fields: [comment]
+                    - column: USER_NAME
+                      updated_fields: [comment, nullable]
+                  failed_columns: []
+                  summary:
+                    total: 2
+                    success: 2
+                    failed: 0
+        '400':
+          description: 请求参数错误或表不存在
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                error: 未找到表 IIH.USER_INFO
+        '500':
+          description: 服务器内部错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/tables/{table_name}:
+    put:
+      summary: 更新表信息
+      description: 更新表的基本信息（如注释等）
+      operationId: updateTable
+      tags: [表结构更新]
+      parameters:
+        - name: table_name
+          in: path
+          required: true
+          description: 表名，支持OWNER.TABLE_NAME格式
+          schema:
+            type: string
+            minLength: 1
+            example: IIH.USER_INFO
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTableRequest'
+            example:
+              comment: 用户信息表（已更新）
+      responses:
+        '200':
+          description: 成功更新表信息
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UpdateTableResponse'
+              example:
+                success: true
+                data:
+                  success: true
+                  message: 成功更新表 IIH.USER_INFO
+                  updated_fields: [comment]
+        '400':
+          description: 请求参数错误或表不存在
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                error: 未找到表 IIH.USER_INFO
         '500':
           description: 服务器内部错误
           content:
@@ -150,6 +260,54 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /api/id-mappings/{id_name}:
+    get:
+      summary: 获取ID映射信息
+      description: 根据ID字段名查询对应的表名和名称列信息，用于生成关联SQL
+      operationId: getIdMapping
+      tags: [ID映射查询]
+      parameters:
+        - name: id_name
+          in: path
+          required: true
+          description: ID字段名
+          schema:
+            type: string
+            minLength: 1
+            example: user_id
+      responses:
+        '200':
+          description: 成功获取ID映射信息
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdMappingResponse'
+              example:
+                success: true
+                data:
+                  id_name: user_id
+                  schema_name: iih
+                  table_name: bd_user
+                  name_column: user_name
+                message: 查询成功
+        '404':
+          description: 未找到ID映射
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdMappingErrorResponse'
+              example:
+                success: false
+                error:
+                  code: ID_NOT_FOUND
+                  message: 未找到ID名为 'unknown_id' 的映射
+        '500':
+          description: 服务器内部错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
 components:
   schemas:
     TableInfo:
@@ -194,6 +352,13 @@ components:
         column_id:
           type: integer
           description: 列ID
+        column_type:
+          type: string
+          enum: [PK, FK, Dimension, Value]
+          description: 列类型（PK-主键，FK-外键，Dimension-维度，Value-数值）
+        column_info:
+          type: string
+          description: 列信息（FK时为关联表名，其他为空）
         is_primary_key:
           type: boolean
           description: 是否为主键
@@ -327,6 +492,197 @@ components:
           description: 详细错误消息
       required: [success]
 
+    UpdateTableRequest:
+      type: object
+      properties:
+        comment:
+          type: string
+          description: 表注释
+      additionalProperties: false
+
+    UpdateTableResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: 更新是否成功
+        message:
+          type: string
+          description: 更新结果消息
+        updated_fields:
+          type: array
+          items:
+            type: string
+          description: 已更新的字段列表
+        error:
+          type: string
+          description: 错误信息（当success为false时）
+      required: [success]
+
+    UpdateTableResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: 操作是否成功
+        data:
+          $ref: '#/components/schemas/UpdateTableResult'
+      required: [success, data]
+
+    ColumnUpdateInfo:
+      type: object
+      properties:
+        column_name:
+          type: string
+          description: 列名
+        comment:
+          type: string
+          description: 列注释
+        nullable:
+          type: string
+          description: 是否可为空（Y/N）
+        default_value:
+          type: string
+          description: 默认值
+      required: [column_name]
+      additionalProperties: false
+
+    UpdateColumnsRequest:
+      type: object
+      properties:
+        columns:
+          type: array
+          items:
+            $ref: '#/components/schemas/ColumnUpdateInfo'
+          description: 要更新的列信息列表
+          minItems: 1
+      required: [columns]
+      additionalProperties: false
+
+    UpdateColumnResult:
+      type: object
+      properties:
+        column:
+          type: string
+          description: 列名
+        updated_fields:
+          type: array
+          items:
+            type: string
+          description: 已更新的字段列表
+        error:
+          type: string
+          description: 错误信息（用于失败的列）
+      required: [column]
+
+    UpdateSummary:
+      type: object
+      properties:
+        total:
+          type: integer
+          description: 总列数
+        success:
+          type: integer
+          description: 成功更新的列数
+        failed:
+          type: integer
+          description: 更新失败的列数
+      required: [total, success, failed]
+
+    UpdateColumnsResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: 整体操作是否成功
+        message:
+          type: string
+          description: 操作结果消息
+        updated_columns:
+          type: array
+          items:
+            $ref: '#/components/schemas/UpdateColumnResult'
+          description: 成功更新的列列表
+        failed_columns:
+          type: array
+          items:
+            $ref: '#/components/schemas/UpdateColumnResult'
+          description: 更新失败的列列表
+        summary:
+          $ref: '#/components/schemas/UpdateSummary'
+        error:
+          type: string
+          description: 错误信息（当success为false时）
+      required: [success, updated_columns, failed_columns, summary]
+
+    UpdateColumnsResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: 操作是否成功
+        data:
+          $ref: '#/components/schemas/UpdateColumnsResult'
+      required: [success, data]
+
+    IdMappingInfo:
+      type: object
+      properties:
+        id_name:
+          type: string
+          description: ID字段名
+        schema_name:
+          type: string
+          description: Schema名称
+        table_name:
+          type: string
+          description: 表名
+        name_column:
+          type: string
+          nullable: true
+          description: 名称列名，找不到时为空
+      required: [id_name, schema_name, table_name]
+
+    IdMappingResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: 操作是否成功
+        data:
+          oneOf:
+            - $ref: '#/components/schemas/IdMappingInfo'
+            - type: array
+              items:
+                $ref: '#/components/schemas/IdMappingInfo'
+              description: 多个匹配结果
+        message:
+          type: string
+          description: 响应消息
+      required: [success, data]
+
+    IdMappingErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: 操作是否成功
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+              description: 错误代码
+            message:
+              type: string
+              description: 错误消息
+          required: [code, message]
+      required: [success, error]
+
 tags:
   - name: 表结构查询
-    description: HIS表结构查询相关的API接口 
+    description: HIS表结构查询相关的API接口
+  - name: 表结构更新
+    description: HIS表结构更新相关的API接口
+  - name: ID映射查询
+    description: ID到显示名称映射查询相关的API接口 

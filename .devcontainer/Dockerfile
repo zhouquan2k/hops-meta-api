@@ -38,6 +38,10 @@ ENV LD_LIBRARY_PATH=/opt/oracle/instantclient_19_3:$LD_LIBRARY_PATH \
 
 WORKDIR /app
 
+# 复制并安装根目录requirements.txt依赖
+COPY requirements.txt /app/
+RUN pip install --no-cache-dir -r requirements.txt
+
 # 安装Python开发工具
 RUN pip install --no-cache-dir \
     ipython \

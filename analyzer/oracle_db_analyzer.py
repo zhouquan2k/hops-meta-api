@@ -38,6 +38,41 @@ def timer(func):
     return wrapper
 
 
+def determine_column_type(data_type, column_name, primary_keys, foreign_keys_dict):
+    """
+    根据数据类型、主键、外键信息确定列类型
+    
+    Args:
+        data_type: 列的数据类型
+        column_name: 列名
+        primary_keys: 主键列表
+        foreign_keys_dict: 外键字典，key为列名，value为引用表名
+    
+    Returns:
+        tuple: (column_type, column_info)
+    """
+    # 检查是否为主键
+    if column_name in primary_keys:
+        return ('PK', '')
+    
+    # 检查是否为外键
+    if column_name in foreign_keys_dict:
+        return ('FK', foreign_keys_dict[column_name])
+    
+    # 根据数据类型判断是Value还是Dimension
+    data_type_upper = data_type.upper()
+    
+    # 数值类型（可累加的）设为Value
+    numeric_types = ['NUMBER', 'INTEGER', 'INT', 'DECIMAL', 'NUMERIC', 'FLOAT', 'DOUBLE', 'REAL']
+    
+    for numeric_type in numeric_types:
+        if data_type_upper.startswith(numeric_type):
+            return ('Value', '')
+    
+    # 其他类型设为Dimension
+    return ('Dimension', '')
+
+
 def get_all_tables(cursor, owner_filter=None, table_filter=None):
     """查询所有表，支持根据所有者和表名过滤"""
     query = """
@@ -458,6 +493,8 @@ class MySQLWriter:
                 default_value TEXT,
                 comment TEXT,
                 column_id INT,
+                column_type VARCHAR(20),
+                column_info VARCHAR(255),
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE KEY(table_id, column_name),
                 FOREIGN KEY(table_id) REFERENCES oracle_tables(id) ON DELETE CASCADE
@@ -555,20 +592,37 @@ class MySQLWriter:
                         cursor.execute("DELETE FROM oracle_foreign_keys WHERE table_id = %s;", (table_id,))
                         cursor.execute("DELETE FROM oracle_indices WHERE table_id = %s;", (table_id,))
                         
+                        # 创建外键字典（列名 -> 引用表名）
+                        foreign_keys_dict = {}
+                        for fk in table_info['foreign_keys']:
+                            column_name = fk[1]  # 列名
+                            referenced_table = fk[2]  # 引用表名
+                            foreign_keys_dict[column_name] = referenced_table
+                        
                         # 插入列信息
                         for column in table_info['columns']:
+                            # 确定列类型和信息
+                            column_type, column_info = determine_column_type(
+                                column['data_type'], 
+                                column['name'], 
+                                table_info['primary_keys'], 
+                                foreign_keys_dict
+                            )
+                            
                             cursor.execute("""
                             INSERT INTO oracle_columns 
-                                (table_id, column_name, data_type, nullable, default_value, comment)
+                                (table_id, column_name, data_type, nullable, default_value, comment, column_type, column_info)
                             VALUES 
-                                (%s, %s, %s, %s, %s, %s);
+                                (%s, %s, %s, %s, %s, %s, %s, %s);
                             """, (
                                 table_id,
                                 column['name'],
                                 column['data_type'],
                                 column['nullable'],
                                 column['default'] if column['default'] != "-" else None,
-                                column['comment'] if column['comment'] != "-" else None
+                                column['comment'] if column['comment'] != "-" else None,
+                                column_type,
+                                column_info if column_info else None
                             ))
                         
                         # 插入主键信息

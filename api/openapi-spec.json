@@ -224,6 +224,78 @@
                     }
                 }
             }
+        },
+        "/api/id-mappings/{id_name}": {
+            "get": {
+                "summary": "获取ID映射信息",
+                "description": "根据ID字段名查询对应的表名和名称列信息，用于生成关联SQL",
+                "operationId": "getIdMapping",
+                "tags": [
+                    "ID映射查询"
+                ],
+                "parameters": [
+                    {
+                        "name": "id_name",
+                        "in": "path",
+                        "required": true,
+                        "description": "ID字段名",
+                        "schema": {
+                            "type": "string",
+                            "minLength": 1,
+                            "example": "user_id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "成功获取ID映射信息",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/IdMappingResponse"
+                                },
+                                "example": {
+                                    "success": true,
+                                    "data": {
+                                        "id_name": "user_id",
+                                        "schema_name": "iih",
+                                        "table_name": "bd_user",
+                                        "name_column": "user_name"
+                                    },
+                                    "message": "查询成功"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "未找到ID映射",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/IdMappingErrorResponse"
+                                },
+                                "example": {
+                                    "success": false,
+                                    "error": {
+                                        "code": "ID_NOT_FOUND",
+                                        "message": "未找到ID名为 'unknown_id' 的映射"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "服务器内部错误",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
     "components": {
@@ -284,6 +356,20 @@
                     "column_id": {
                         "type": "integer",
                         "description": "列ID"
+                    },
+                    "column_type": {
+                        "type": "string",
+                        "enum": [
+                            "PK",
+                            "FK",
+                            "Dimension",
+                            "Value"
+                        ],
+                        "description": "列类型（PK-主键，FK-外键，Dimension-维度，Value-数值）"
+                    },
+                    "column_info": {
+                        "type": "string",
+                        "description": "列信息（FK时为关联表名，其他为空）"
                     },
                     "is_primary_key": {
                         "type": "boolean",
@@ -477,6 +563,94 @@
                     "data"
                 ]
             },
+            "IdMappingInfo": {
+                "type": "object",
+                "properties": {
+                    "id_name": {
+                        "type": "string",
+                        "description": "ID字段名"
+                    },
+                    "schema_name": {
+                        "type": "string",
+                        "description": "Schema名称"
+                    },
+                    "table_name": {
+                        "type": "string",
+                        "description": "表名"
+                    },
+                    "name_column": {
+                        "type": "string",
+                        "nullable": true,
+                        "description": "名称列名，找不到时为空"
+                    }
+                },
+                "required": [
+                    "id_name",
+                    "schema_name",
+                    "table_name"
+                ]
+            },
+            "IdMappingResponse": {
+                "type": "object",
+                "properties": {
+                    "success": {
+                        "type": "boolean",
+                        "description": "操作是否成功"
+                    },
+                    "data": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/IdMappingInfo"
+                            },
+                            {
+                                "type": "array",
+                                "items": {
+                                    "$ref": "#/components/schemas/IdMappingInfo"
+                                },
+                                "description": "多个匹配结果"
+                            }
+                        ]
+                    },
+                    "message": {
+                        "type": "string",
+                        "description": "响应消息"
+                    }
+                },
+                "required": [
+                    "success",
+                    "data"
+                ]
+            },
+            "IdMappingErrorResponse": {
+                "type": "object",
+                "properties": {
+                    "success": {
+                        "type": "boolean",
+                        "description": "操作是否成功"
+                    },
+                    "error": {
+                        "type": "object",
+                        "properties": {
+                            "code": {
+                                "type": "string",
+                                "description": "错误代码"
+                            },
+                            "message": {
+                                "type": "string",
+                                "description": "错误消息"
+                            }
+                        },
+                        "required": [
+                            "code",
+                            "message"
+                        ]
+                    }
+                },
+                "required": [
+                    "success",
+                    "error"
+                ]
+            },
             "ErrorResponse": {
                 "type": "object",
                 "properties": {
@@ -507,6 +681,10 @@
         {
             "name": "表结构查询",
             "description": "Oracle表结构查询相关的API接口"
+        },
+        {
+            "name": "ID映射查询",
+            "description": "ID到显示名称映射查询相关的API接口"
         }
     ]
 }
