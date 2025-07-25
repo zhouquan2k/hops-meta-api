@@ -71,14 +71,14 @@ def get_table_columns_info(table_name, owner=None):
                 # 查询列信息
                 columns_query = """
                 SELECT c.column_name, c.data_type, c.nullable, c.default_value, c.comment, 
-                       c.column_id, c.column_type, c.column_info,
+                       c.column_type, c.column_info,
                        ref_table.id_column as ref_id_column,
                        ref_table.name_column as ref_name_column,
                        ref_table.code_column as ref_code_column
                 FROM oracle_columns c
                 LEFT JOIN oracle_tables ref_table ON (c.column_type = 'FK' AND c.column_info = ref_table.table_name)
                 WHERE c.table_id = %s
-                ORDER BY c.column_id
+                ORDER BY c.id
                 """
                 
                 cursor.execute(columns_query, [table_id])
